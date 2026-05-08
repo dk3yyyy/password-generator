@@ -1,9 +1,11 @@
 [project]
 name = "password-generator"
 version = "1.0.0"
-description = "A secure password generator with CLI and web interface"
+description = "A secure, feature-rich password generator with CLI and beautiful web UI"
 readme = "README.md"
 requires-python = ">=3.14"
+keywords = ["password", "generator", "security", "cli", "web", "passphrase", "entropy"]
+authors = [{name = "G0D👽", email = "dk3yyyy@email.com"}]
 dependencies = [
     "rich>=13.0.0",
     "fastapi>=0.100.0",
