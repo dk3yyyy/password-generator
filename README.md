@@ -21,7 +21,7 @@ PassGen uses Python's `secrets` module for cryptographically secure randomness. 
 - One-click copy with a manual-copy fallback
 - Generation limits aligned with backend validation
 
-The displayed entropy is a pool-size estimate for the selected generator settings, not a guarantee of resistance to every cracking strategy.
+For random passwords, displayed entropy is `log₂` of the exact number of valid outputs for the selected character classes after ambiguity filtering and exclusions. Passphrase entropy is based on independent choices from the configured wordlist. These estimates describe the generator's search space, not resistance to credential leaks, phishing, or implementation compromise.
 
 ## ✨ Features
 
@@ -144,7 +144,7 @@ uv sync --all-extras
 uv run pytest tests/ -v
 
 # Compile-check the Python entry points
-uv run python -m py_compile main.py web.py passphrases.py
+uv run python -m py_compile main.py web.py passphrases.py passwords.py
 ```
 
 For pull requests targeting `main`, GitHub Actions runs the test suite and a non-blocking Python compilation check.
@@ -157,11 +157,13 @@ password-generator/
 ├── docs/web-ui.png
 ├── main.py
 ├── passphrases.py
+├── passwords.py
 ├── web.py
 ├── templates/index.html
 ├── tests/
 │   ├── test_main.py
 │   ├── test_passphrases.py
+│   ├── test_passwords.py
 │   └── test_web.py
 ├── wordlists/
 │   ├── eff_large_wordlist.txt

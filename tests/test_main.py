@@ -65,6 +65,70 @@ class TestPasswordGeneration:
         with pytest.raises(ValueError, match="Length too short"):
             generate_password(1, True, True, True, True)
 
+    def test_cli_random_password_reports_exact_constrained_entropy(
+        self, monkeypatch, tmp_path
+    ):
+        config_dir = tmp_path / ".passgen"
+        monkeypatch.setattr(main_module, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(main_module, "HISTORY_FILE", config_dir / "history.json")
+        monkeypatch.setattr(main_module, "CONFIG_FILE", config_dir / "config.json")
+        monkeypatch.setattr(main_module, "WORDLIST_DIR", config_dir / "wordlists")
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["passgen", "--length", "8", "--upper", "--lower"],
+        )
+
+        observed = {}
+
+        def fake_entropy(**kwargs):
+            observed.update(kwargs)
+            return 42.0
+
+        monkeypatch.setattr(main_module, "calculate_password_entropy", fake_entropy)
+
+        main_module.main()
+
+        assert observed == {
+            "length": 8,
+            "use_upper": True,
+            "use_lower": True,
+            "use_digits": False,
+            "use_symbols": False,
+            "no_ambiguous": False,
+            "exclude_chars": "",
+        }
+
+    def test_cli_rejects_selected_category_emptied_by_exclusions(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        config_dir = tmp_path / ".passgen"
+        monkeypatch.setattr(main_module, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(main_module, "HISTORY_FILE", config_dir / "history.json")
+        monkeypatch.setattr(main_module, "CONFIG_FILE", config_dir / "config.json")
+        monkeypatch.setattr(main_module, "WORDLIST_DIR", config_dir / "wordlists")
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "passgen",
+                "--length",
+                "12",
+                "--digits",
+                "--exclude",
+                "0123456789",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            main_module.main()
+
+        assert exc_info.value.code == 1
+        output = capsys.readouterr().out
+        assert "Selected digits character set is empty after exclusions" in output
+
 
 class TestPassphraseGeneration:
     def test_default_passphrase_uses_eff_wordlist(self):

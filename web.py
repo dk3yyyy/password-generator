@@ -1,26 +1,16 @@
 import secrets
-import string
-import random
-import math
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from passphrases import BUILTIN_WORDLIST, calculate_passphrase_entropy
+from passwords import calculate_password_entropy, generate_password
 
 app = FastAPI(title="Password Generator")
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
 
-AMBIGUOUS_CHARS = set("0O1lI")
-
 DEFAULT_WORDLIST = BUILTIN_WORDLIST
-
-
-def calculate_entropy(password: str, pool_size: int) -> float:
-    if pool_size == 0:
-        return 0.0
-    return len(password) * math.log2(pool_size)
 
 
 def get_strength(entropy: float) -> tuple[str, str, str]:
@@ -32,62 +22,6 @@ def get_strength(entropy: float) -> tuple[str, str, str]:
         return "Good", "cyan", "info"
     else:
         return "Strong", "green", "success"
-
-
-def generate_password(
-    length: int,
-    use_upper: bool,
-    use_lower: bool,
-    use_digits: bool,
-    use_symbols: bool,
-    no_ambiguous: bool = False,
-) -> tuple[str, int]:
-    required_chars = []
-    char_sets = []
-
-    if use_upper:
-        chars = string.ascii_uppercase
-        if no_ambiguous:
-            chars = "".join(c for c in chars if c not in AMBIGUOUS_CHARS)
-        char_sets.append(chars)
-        if chars:
-            required_chars.append(secrets.choice(chars))
-
-    if use_lower:
-        chars = string.ascii_lowercase
-        if no_ambiguous:
-            chars = "".join(c for c in chars if c not in AMBIGUOUS_CHARS)
-        char_sets.append(chars)
-        if chars:
-            required_chars.append(secrets.choice(chars))
-
-    if use_digits:
-        chars = string.digits
-        if no_ambiguous:
-            chars = "".join(c for c in chars if c not in AMBIGUOUS_CHARS)
-        char_sets.append(chars)
-        if chars:
-            required_chars.append(secrets.choice(chars))
-
-    if use_symbols:
-        char_sets.append(string.punctuation)
-        required_chars.append(secrets.choice(string.punctuation))
-
-    if not char_sets:
-        raise ValueError("At least one character type must be selected")
-
-    char_pool = "".join(char_sets)
-
-    if not char_pool:
-        raise ValueError("No characters available in pool")
-
-    if length < len(required_chars):
-        raise ValueError("Length too short for selected character types")
-
-    password_chars = required_chars + [secrets.choice(char_pool) for _ in range(length - len(required_chars))]
-    random.SystemRandom().shuffle(password_chars)
-
-    return "".join(password_chars), len(char_pool)
 
 
 def generate_passphrase(
@@ -177,11 +111,18 @@ async def generate(request: Request):
                 detail="select at least one character type",
             )
 
+        entropy = calculate_password_entropy(
+            length,
+            use_upper,
+            use_lower,
+            use_digits,
+            use_symbols,
+            no_ambiguous,
+        )
         for _ in range(count):
-            pwd, pool_size = generate_password(
+            pwd, _ = generate_password(
                 length, use_upper, use_lower, use_digits, use_symbols, no_ambiguous
             )
-            entropy = calculate_entropy(pwd, pool_size)
             strength, color, badge = get_strength(entropy)
             passwords.append({
                 "password": pwd,
