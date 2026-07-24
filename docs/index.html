@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Generate secure random passwords and EFF passphrases entirely in your browser.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>PassGen — Private browser password generator</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="PassGen home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+          <path d="M12 14v2"></path>
+        </svg>
+      </span>
+      <span>PassGen</span>
+    </a>
+    <div class="header-actions">
+      <span class="privacy-status"><span aria-hidden="true"></span>Runs locally</span>
+      <a class="source-link" href="https://github.com/dk3yyyy/password-generator" rel="noopener noreferrer">View source<span class="source-arrow" aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Private credential utility</p>
+        <h1 id="page-title">Make a password worth keeping.</h1>
+      </div>
+      <p class="intro-copy">Secure randomness, exact entropy estimates, and no server round-trip. Your generated values stay in this tab and disappear when you close it.</p>
+    </section>
+
+    <aside class="privacy-banner" aria-label="Privacy information">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.6 2.8 8.2 7 10 4.2-1.8 7-5.4 7-10V6l-7-3Z"></path><path d="m9.5 12 1.7 1.7 3.6-3.7"></path></svg>
+      <div><strong>Generated entirely in your browser.</strong><span>No credential is sent, saved, logged, or added to browser storage. The passphrase wordlist is a static file served from this same site.</span></div>
+    </aside>
+
+    <section class="workspace" aria-label="Password generator">
+      <div class="builder">
+        <div class="section-kicker">
+          <h2>Configure</h2>
+          <span class="step">01 / 02</span>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Generator type">
+          <button class="tab" id="random-tab" type="button" role="tab" aria-selected="true" aria-controls="random-panel" tabindex="0" data-mode="random">Random password</button>
+          <button class="tab" id="passphrase-tab" type="button" role="tab" aria-selected="false" aria-controls="passphrase-panel" tabindex="-1" data-mode="passphrase">Passphrase</button>
+        </div>
+
+        <form id="generator-form" novalidate>
+          <input type="hidden" name="mode" value="random">
+
+          <div class="controls-panel" id="random-panel" role="tabpanel" aria-labelledby="random-tab">
+            <div class="field">
+              <label class="field-label" for="length"><span>Password length</span><span class="field-hint">6–64</span></label>
+              <div class="range-wrap">
+                <input type="range" name="length" min="6" max="64" value="20" id="length">
+                <output class="range-value" id="length-value" for="length">20</output>
+              </div>
+            </div>
+
+            <fieldset class="field fieldset-reset">
+              <legend class="field-label">Character sets</legend>
+              <div class="option-grid">
+                <label class="option"><input type="checkbox" name="upper" checked><span>Uppercase</span></label>
+                <label class="option"><input type="checkbox" name="lower" checked><span>Lowercase</span></label>
+                <label class="option"><input type="checkbox" name="digits" checked><span>Numbers</span></label>
+                <label class="option"><input type="checkbox" name="symbols" checked><span>Symbols</span></label>
+                <label class="option option-wide"><input type="checkbox" name="no_ambiguous"><span>Leave out ambiguous characters <small>0 O 1 l I</small></span></label>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label class="field-label" for="exclude-chars"><span>Custom exclusions</span><span class="field-hint">Optional</span></label>
+              <input class="text-input" id="exclude-chars" name="exclude_chars" type="text" maxlength="94" autocomplete="off" spellcheck="false" placeholder="Characters to leave out">
+            </div>
+          </div>
+
+          <div class="controls-panel" id="passphrase-panel" role="tabpanel" aria-labelledby="passphrase-tab" hidden>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="word-count"><span>Words</span><span class="field-hint">2–10</span></label>
+                <input class="number-input" id="word-count" type="number" name="word_count" value="6" min="2" max="10">
+              </div>
+              <div class="field">
+                <label class="field-label" for="separator">Separator</label>
+                <select id="separator" name="separator">
+                  <option value="-">Hyphen</option>
+                  <option value="_">Underscore</option>
+                  <option value=".">Period</option>
+                  <option value=" ">Space</option>
+                </select>
+              </div>
+            </div>
+            <div class="option-grid field">
+              <label class="option"><input type="checkbox" name="capitalize" checked><span>Capitalize words</span></label>
+              <label class="option"><input type="checkbox" name="add_number"><span>Append 00–99</span></label>
+            </div>
+            <p class="wordlist-note" id="wordlist-status">EFF long wordlist · 7,776 unique words</p>
+          </div>
+
+          <div class="field count-field">
+            <label class="field-label" for="count"><span>How many?</span><span class="field-hint">Up to 20</span></label>
+            <input class="number-input" id="count" type="number" name="count" value="1" min="1" max="20">
+          </div>
+
+          <button class="generate-button" id="generate-button" type="submit">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <span>Generate password</span>
+          </button>
+          <p class="error-message" id="error-message" role="alert" aria-live="assertive" tabindex="-1" hidden></p>
+        </form>
+      </div>
+
+      <div class="output">
+        <div class="section-kicker">
+          <h2>Results</h2>
+          <div class="output-tools"><button id="clear-button" class="text-button" type="button" hidden>Clear</button><span class="step">02 / 02</span></div>
+        </div>
+
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h11M4 17h8"></path><path d="m17 15 3 3-3 3"></path></svg>
+          </div>
+          <strong>Your results will appear here</strong>
+          <p>Adjust the settings, then generate one or more credentials.</p>
+        </div>
+
+        <p class="sr-only" id="generation-status" role="status" aria-live="polite"></p>
+        <div class="results" id="results" aria-label="Generated passwords"></div>
+        <p class="footnote">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+          <span>Entropy measures the generator’s possible outputs. It does not protect against phishing, malware, or a compromised device.</span>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>PassGen is open source under the MIT License.</span>
+    <span>Use a password manager to store generated credentials.</span>
+  </footer>
+</body>
+</html>

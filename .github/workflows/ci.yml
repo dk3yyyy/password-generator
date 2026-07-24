@@ -22,12 +22,29 @@ jobs:
       uses: astral-sh/setup-uv@v4
       with:
         enable-cache: true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
     
     - name: Install dependencies
-      run: uv sync --all-extras
+      run: |
+        uv sync --all-extras
+        npm ci
+        npx playwright install --with-deps chromium
     
-    - name: Run tests
+    - name: Run Python tests
       run: uv run pytest tests/ -v
+
+    - name: Run static browser-core tests
+      run: npm run test:unit
+
+    - name: Run static browser integration tests
+      run: npm run test:browser
+
+    - name: Verify static wordlist copy
+      run: cmp wordlists/eff_large_wordlist.txt docs/eff_large_wordlist.txt
     
     - name: Type check (optional)
       run: uv run python -m py_compile main.py web.py passphrases.py passwords.py
