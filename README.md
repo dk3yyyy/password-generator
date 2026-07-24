@@ -12,7 +12,7 @@ A powerful, secure, and feature-rich password generator built with Python. Featu
 - **Random Password Generation** - Generate secure passwords with customizable character sets
 - **Passphrase Generation** - Create memorable passwords from wordlists
 - **Interactive Mode** - User-friendly prompts for password creation
-- **Persistent History** - Track previously generated passwords
+- **Opt-in History** - Save generated passwords only when explicitly requested
 - **Config Management** - Save and load preferred settings
 - **Export** - Export passwords to JSON or CSV
 - **Categories** - Organize passwords by type (wifi, email, social, etc.)
@@ -31,7 +31,7 @@ A powerful, secure, and feature-rich password generator built with Python. Featu
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/password-generator.git
+git clone https://github.com/dk3yyyy/password-generator.git
 cd password-generator
 
 # Install dependencies
@@ -66,6 +66,9 @@ uv run python main.py --config
 
 # View history
 uv run python main.py --history
+
+# Explicitly save a generated password to history
+uv run python main.py --length 20 --upper --lower --digits --symbols --save-history
 
 # Export history
 uv run python main.py --export json
@@ -110,6 +113,7 @@ Then open http://127.0.0.1:8000 in your browser.
 | `--category CAT` | Category for password | "" |
 | `--wordlist NAME` | Custom wordlist for passphrase | "" |
 | `--history` | Show password history | False |
+| `--save-history` | Explicitly save generated passwords to local history | False |
 | `--clear-history` | Clear all history | False |
 | `--export FORMAT` | Export history (json/csv) | - |
 | `--save-config` | Save current options as defaults | False |
@@ -135,6 +139,8 @@ password-generator/
 ## Security Features
 
 - Uses Python's `secrets` module for cryptographically secure random generation
+- Does not persist generated passwords unless `--save-history` is supplied
+- Protects history and export files with owner-only permissions on POSIX systems
 - Calculates password entropy for strength assessment
 - Detects common weak passwords
 - Warns about patterns (repeated chars, sequences, keyboard patterns)
