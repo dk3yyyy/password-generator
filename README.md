@@ -157,11 +157,13 @@ password-generator/
 ├── docs/web-ui.png
 ├── main.py
 ├── passphrases.py
+├── passwords.py
 ├── web.py
 ├── templates/index.html
 ├── tests/
 │   ├── test_main.py
 │   ├── test_passphrases.py
+│   ├── test_passwords.py
 │   └── test_web.py
 ├── wordlists/
 │   ├── eff_large_wordlist.txt
