@@ -6,20 +6,29 @@
 [![Tested with Python 3.14](https://img.shields.io/badge/Tested%20with-Python%203.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32.svg)](LICENSE)
 
+**[🚀 Try PassGen in your browser →](https://dk3yyyy.github.io/password-generator/)**
+
 PassGen uses Python's `secrets` module for cryptographically secure randomness. The web interface does not persist generated values, while CLI history is disabled unless you explicitly enable it with `--save-history` or confirm the interactive prompt.
 
-## 🖥️ Web interface
+## 🖥️ Web interfaces
 
 ![PassGen web interface showing a generated password, strength rating, entropy, and configuration controls](docs/web-ui.png)
 
 *The screenshot shows a generated sample; it is not a real credential.*
 
+PassGen includes two web implementations:
+
+- **[Static browser demo](https://dk3yyyy.github.io/password-generator/) (`docs/`)** — live on GitHub Pages with no backend. It uses the Web Crypto API, keeps generated credentials in tab memory only, and loads the bundled EFF wordlist from the same origin.
+- **FastAPI interface (`web.py`)** — demonstrates the Python generator through a local server while preserving the same limits and entropy model.
+
+Both interfaces provide:
+
 - Random-password and passphrase modes
-- Responsive layout for desktop and mobile
+- Responsive layouts for desktop and mobile
 - Keyboard-accessible controls and inline validation
 - Strength and entropy indicators
 - One-click copy with a manual-copy fallback
-- Generation limits aligned with backend validation
+- Generation limits aligned with the CLI
 
 For random passwords, displayed entropy is `log₂` of the exact number of valid outputs for the selected character classes after ambiguity filtering and exclusions. Passphrase entropy is based on independent choices from the configured wordlist. These estimates describe the generator's search space, not resistance to credential leaks, phishing, or implementation compromise.
 
@@ -64,7 +73,15 @@ cd password-generator
 uv sync --all-extras
 ```
 
-### Start the web interface
+### Preview the static browser demo
+
+```bash
+python -m http.server 8000 --directory docs
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Serving the directory is required because browsers do not allow the passphrase wordlist to be fetched reliably from a `file://` page.
+
+### Start the FastAPI interface
 
 ```bash
 uv run python web.py
@@ -142,8 +159,16 @@ Generated values are not written there unless you explicitly use `--save-history
 # Install project and development dependencies
 uv sync --all-extras
 
-# Run the complete test suite
+# Run the Python test suite
 uv run pytest tests/ -v
+
+# Install and run the static browser tests (Node.js 20+)
+npm ci
+npx playwright install chromium
+npm test
+
+# Verify the GitHub Pages wordlist matches the Python source
+cmp wordlists/eff_large_wordlist.txt docs/eff_large_wordlist.txt
 
 # Compile-check the Python entry points
 uv run python -m py_compile main.py web.py passphrases.py passwords.py
@@ -156,7 +181,13 @@ For pull requests targeting `main`, GitHub Actions runs the test suite and a non
 ```text
 password-generator/
 ├── .github/workflows/ci.yml
-├── docs/web-ui.png
+├── docs/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.mjs
+│   ├── generator.mjs
+│   ├── eff_large_wordlist.txt
+│   └── web-ui.png
 ├── main.py
 ├── passphrases.py
 ├── passwords.py
@@ -167,6 +198,10 @@ password-generator/
 │   ├── test_passphrases.py
 │   ├── test_passwords.py
 │   └── test_web.py
+├── package.json
+├── playwright.config.mjs
+├── tests-browser/static-site.spec.mjs
+├── tests-js/generator.test.mjs
 ├── wordlists/
 │   ├── eff_large_wordlist.txt
 │   └── README.md

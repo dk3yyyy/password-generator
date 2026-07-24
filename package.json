@@ -1,0 +1,13 @@
+{
+  "name": "passgen-static-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test tests-js/generator.test.mjs",
+    "test:browser": "playwright test",
+    "test": "npm run test:unit && npm run test:browser"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
