@@ -640,17 +640,26 @@
 
     function selectMode(mode, moveFocus = false) {
       modeInput.value = mode;
+      const randomActive = mode === 'random';
       tabs.forEach((tab) => {
         const isActive = tab.dataset.mode === mode;
         tab.setAttribute('aria-selected', String(isActive));
         tab.tabIndex = isActive ? 0 : -1;
         if (isActive && moveFocus) tab.focus();
       });
-      randomPanel.hidden = mode !== 'random';
-      passphrasePanel.hidden = mode !== 'passphrase';
-      buttonLabel.textContent = mode === 'random' ? 'Generate password' : 'Generate passphrase';
+      randomPanel.hidden = !randomActive;
+      passphrasePanel.hidden = randomActive;
+      randomPanel.querySelectorAll('input, select').forEach((control) => {
+        control.disabled = !randomActive;
+      });
+      passphrasePanel.querySelectorAll('input, select').forEach((control) => {
+        control.disabled = randomActive;
+      });
+      buttonLabel.textContent = randomActive ? 'Generate password' : 'Generate passphrase';
       clearError();
     }
+
+    selectMode(modeInput.value);
 
     tabs.forEach((tab, index) => {
       tab.addEventListener('click', () => selectMode(tab.dataset.mode));
@@ -763,7 +772,8 @@
 
     function validateResults(data) {
       const strengths = new Set(['Strong', 'Good', 'Fair', 'Weak']);
-      if (!Array.isArray(data.passwords) || data.passwords.length > 20) {
+      if (!data || typeof data !== 'object' || !Array.isArray(data.passwords)
+          || data.passwords.length < 1 || data.passwords.length > 20) {
         throw new Error('The generator returned an unexpected response.');
       }
       return data.passwords.map((item) => {
