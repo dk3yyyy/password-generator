@@ -22,10 +22,10 @@ A powerful, secure, and feature-rich password generator built with Python. Featu
 - **Pattern Detection** - Warns about repeated/sequential characters
 
 ### Web Interface
-- Beautiful dark-themed UI
+- Responsive, accessible interface for desktop and mobile
 - Random password and passphrase modes
-- Real-time strength indicators
-- One-click copy to clipboard
+- Clear strength and entropy indicators
+- One-click copy with inline validation feedback
 
 ## Installation
 

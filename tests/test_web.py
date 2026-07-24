@@ -7,6 +7,40 @@ from web import app
 client = TestClient(app, raise_server_exceptions=False)
 
 
+def test_home_uses_accessible_generator_controls():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert 'role="tablist"' in html
+    assert html.count('<button class="tab"') == 2
+    assert 'aria-controls="random-panel"' in html
+    assert 'aria-controls="passphrase-panel"' in html
+    assert 'id="error-message" role="alert" aria-live="assertive"' in html
+    assert 'id="results" aria-live="polite"' in html
+    assert '.empty-state[hidden]' in html
+
+
+def test_home_matches_backend_limits_and_has_inline_error_handling():
+    html = client.get("/").text
+
+    assert 'name="count" value="1" min="1" max="20"' in html
+    assert 'name="length" min="6" max="64" value="20"' in html
+    assert 'name="word_count" value="4" min="2" max="10"' in html
+    assert "if (!response.ok)" in html
+    assert "data.detail" in html
+    assert "alert('Error')" not in html
+
+
+def test_home_does_not_depend_on_remote_fonts_or_emoji_icons():
+    html = client.get("/").text
+
+    assert "fonts.googleapis.com" not in html
+    assert "🔐" not in html
+    assert "⚡" not in html
+    assert "📋" not in html
+
+
 def test_generate_rejects_non_integer_count():
     response = client.post(
         "/generate",
