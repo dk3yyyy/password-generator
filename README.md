@@ -1,169 +1,173 @@
-# PassGen - Secure Password Generator
+# 🔐 PassGen
 
-A powerful, secure, and feature-rich password generator built with Python. Features a beautiful CLI with rich formatting and a modern web interface.
+**Generate strong random passwords and memorable passphrases from a polished web interface or a practical Python CLI.**
 
-![Python](https://img.shields.io/badge/python-3.14+-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-passing-success)
+[![Tests](https://github.com/dk3yyyy/password-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/dk3yyyy/password-generator/actions/workflows/ci.yml)
+[![Tested with Python 3.14](https://img.shields.io/badge/Tested%20with-Python%203.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32.svg)](LICENSE)
 
-## Features
+PassGen uses Python's `secrets` module for cryptographically secure randomness. The web interface does not persist generated values, while CLI history is disabled unless you explicitly enable it for a generation command.
 
-### CLI Features
-- **Random Password Generation** - Generate secure passwords with customizable character sets
-- **Passphrase Generation** - Create memorable passwords from wordlists
-- **Interactive Mode** - User-friendly prompts for password creation
-- **Opt-in History** - Save generated passwords only when explicitly requested
-- **Config Management** - Save and load preferred settings
-- **Export** - Export passwords to JSON or CSV
-- **Categories** - Organize passwords by type (wifi, email, social, etc.)
-- **Custom Wordlists** - Create and use custom wordlists for passphrases
-- **Copy to Clipboard** - Cross-platform clipboard support
-- **Strength Analysis** - Entropy calculation and strength detection
-- **Pattern Detection** - Warns about repeated/sequential characters
+## 🖥️ Web interface
 
-### Web Interface
-- Responsive, accessible interface for desktop and mobile
-- Random password and passphrase modes
-- Clear strength and entropy indicators
-- One-click copy with inline validation feedback
+![PassGen web interface showing a generated password, strength rating, entropy, and configuration controls](docs/web-ui.png)
 
-## Installation
+*The screenshot shows a generated sample; it is not a real credential.*
 
-```bash
-# Clone the repository
-git clone https://github.com/dk3yyyy/password-generator.git
-cd password-generator
+- Random-password and passphrase modes
+- Responsive layout for desktop and mobile
+- Keyboard-accessible controls and inline validation
+- Strength and entropy indicators
+- One-click copy with a manual-copy fallback
+- Generation limits aligned with backend validation
 
-# Install dependencies
-uv sync
+The displayed entropy is a pool-size estimate for the selected generator settings, not a guarantee of resistance to every cracking strategy.
 
-# Install dev dependencies for testing
-uv sync --all-extras
-```
-
-## Usage
+## ✨ Features
 
 ### CLI
 
+- Customizable uppercase, lowercase, number, and symbol sets
+- Ambiguous-character exclusion and custom exclusions
+- Memorable passphrases with configurable separators
+- Interactive prompts and a quick-generation mode
+- Strength analysis and weak-pattern warnings
+- Optional clipboard copy
+- Explicitly opt-in local history
+- JSON or CSV history export
+- Saved defaults, categories, and custom wordlists
+
+### Security defaults
+
+- Passwords are generated with Python's cryptographically secure `secrets` module.
+- The web interface returns generated values only to the current page and does not write them to history.
+- CLI history is written only when `--save-history` is supplied.
+- History and exports receive owner-only permissions on POSIX systems.
+- Custom wordlists are constrained to PassGen's local wordlist directory.
+
+> [!IMPORTANT]
+> Saved history and exports contain plaintext passwords. Treat those files as sensitive and delete them when they are no longer needed. PassGen is a generator, not a password manager.
+
+## 🚀 Quick start
+
+### Requirements
+
+- Python 3.14+
+- [`uv`](https://docs.astral.sh/uv/)
+
+### Install
+
 ```bash
-# Run the CLI (starts in interactive mode by default)
-uv run python main.py
-
-# Generate a random password
-uv run python main.py --length 20 --upper --lower --digits --symbols
-
-# Generate a passphrase
-uv run python main.py --passphrase --words 4 --capitalize
-
-# Quick generate (16-char with all character types + copy)
-uv run python main.py --quick
-
-# Save your preferred settings
-uv run python main.py --save-config
-
-# Load saved config
-uv run python main.py --config
-
-# View history
-uv run python main.py --history
-
-# Explicitly save a generated password to history
-uv run python main.py --length 20 --upper --lower --digits --symbols --save-history
-
-# Export history
-uv run python main.py --export json
-
-# Clear history
-uv run python main.py --clear-history
-
-# Copy to clipboard
-uv run python main.py --length 16 --copy
-
-# View version
-uv run python main.py --version
+git clone https://github.com/dk3yyyy/password-generator.git
+cd password-generator
+uv sync --all-extras
 ```
 
-### Web Interface
+### Start the web interface
 
 ```bash
-# Start the web server
 uv run python web.py
 ```
 
-Then open http://127.0.0.1:8000 in your browser.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-## Command Line Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--length N` | Password length | 12 |
-| `--upper` | Include uppercase letters | False |
-| `--lower` | Include lowercase letters | False |
-| `--digits` | Include digits | False |
-| `--symbols` | Include special symbols | False |
-| `--no-ambiguous` | Exclude ambiguous chars (0, O, l, 1, I) | False |
-| `--exclude CHARS` | Characters to exclude | "" |
-| `--count N` | Number of passwords to generate | 1 |
-| `--copy` | Copy password to clipboard | False |
-| `--passphrase` | Generate passphrase instead | False |
-| `--words N` | Number of words for passphrase | 4 |
-| `--separator SEP` | Separator for passphrase words | "-" |
-| `--capitalize` | Capitalize passphrase words | False |
-| `--add-number` | Append number to passphrase | False |
-| `--category CAT` | Category for password | "" |
-| `--wordlist NAME` | Custom wordlist for passphrase | "" |
-| `--history` | Show password history | False |
-| `--save-history` | Explicitly save generated passwords to local history | False |
-| `--clear-history` | Clear all history | False |
-| `--export FORMAT` | Export history (json/csv) | - |
-| `--save-config` | Save current options as defaults | False |
-| `--config` | Load saved config as defaults | False |
-| `--quick` | Quick: 20-char password with copy | False |
-| `--version` | Show version | - |
-| `--interactive` | Force interactive mode | False |
-
-## Project Structure
-
-```
-password-generator/
-├── main.py           # CLI application
-├── web.py            # Web interface (FastAPI)
-├── pyproject.toml    # Project configuration
-├── README.md         # This file
-├── tests/            # Unit tests
-│   └── test_main.py
-└── templates/        # Web templates
-    └── index.html
-```
-
-## Security Features
-
-- Uses Python's `secrets` module for cryptographically secure random generation
-- Does not persist generated passwords unless `--save-history` is supplied
-- Protects history and export files with owner-only permissions on POSIX systems
-- Calculates password entropy for strength assessment
-- Detects common weak passwords
-- Warns about patterns (repeated chars, sequences, keyboard patterns)
-
-## Development
-
-### Running Tests
+### Use the CLI
 
 ```bash
-uv run pytest tests/ -v
+# Interactive mode
+uv run python main.py
+
+# 20-character password using every character class
+uv run python main.py --length 20 --upper --lower --digits --symbols
+
+# Four-word capitalized passphrase
+uv run python main.py --passphrase --words 4 --capitalize
+
+# Generate and copy one strong 20-character password
+uv run python main.py --quick
+
+# Explicitly save this result to local history
+uv run python main.py --length 20 --upper --lower --digits --symbols --save-history
 ```
 
-### Code Quality
+## 🧰 CLI reference
 
-The project follows Python best practices with:
-- Type hints
-- Docstrings
-- Modular design
+| Flag | Description | Default |
+|---|---|---:|
+| `--length N` | Password length | `12` |
+| `--upper` | Include uppercase letters | Off |
+| `--lower` | Include lowercase letters | Off |
+| `--digits` | Include numbers | Off |
+| `--symbols` | Include symbols | Off |
+| `--no-ambiguous` | Exclude `0`, `O`, `l`, `1`, and `I` | Off |
+| `--exclude CHARS` | Exclude specific characters | `""` |
+| `--count N` | Number of passwords to generate | `1` |
+| `--copy` | Copy the generated value | Off |
+| `--interactive` | Force interactive mode | Off |
+| `--passphrase` | Generate a passphrase | Off |
+| `--words N` | Number of passphrase words | `4` |
+| `--separator SEP` | Separator between words | `-` |
+| `--capitalize` | Capitalize passphrase words | Off |
+| `--add-number` | Append a number to the passphrase | Off |
+| `--category NAME` | Label a saved history entry | `""` |
+| `--wordlist NAME` | Use a custom local wordlist | `""` |
+| `--history` | Display saved history | — |
+| `--save-history` | Save generated values to local history | Off |
+| `--clear-history` | Delete saved history | — |
+| `--export json\|csv` | Export saved history | — |
+| `--save-config` | Save the current options as defaults | Off |
+| `--config` | Load saved defaults | Off |
+| `--quick` | Generate and copy one strong 20-character password | Off |
+| `--version` | Display the PassGen version | — |
 
-## License
+## 🗂️ Local data
 
-MIT License - See LICENSE file for details.
+PassGen stores optional local state under `~/.passgen/`:
 
-## Contributing
+```text
+~/.passgen/
+├── config.json
+├── history.json
+└── wordlists/
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Generated values are not written there unless you explicitly use `--save-history`.
+
+## 🧪 Development
+
+```bash
+# Install project and development dependencies
+uv sync --all-extras
+
+# Run the complete test suite
+uv run pytest tests/ -v
+
+# Compile-check the Python entry points
+uv run python -m py_compile main.py web.py
+```
+
+For pull requests targeting `main`, GitHub Actions runs the test suite and a non-blocking Python compilation check.
+
+## 📁 Project structure
+
+```text
+password-generator/
+├── .github/workflows/ci.yml
+├── docs/web-ui.png
+├── main.py
+├── web.py
+├── templates/index.html
+├── tests/
+│   ├── test_main.py
+│   └── test_web.py
+├── pyproject.toml
+└── README.md
+```
+
+## 🤝 Contributing
+
+Bug reports and focused pull requests are welcome. Before submitting a change, run the test suite and keep security-sensitive behavior covered by regression tests.
+
+## 📄 License
+
+Distributed under the [MIT License](LICENSE).
