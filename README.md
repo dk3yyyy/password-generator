@@ -29,7 +29,7 @@ The displayed entropy is a pool-size estimate for the selected generator setting
 
 - Customizable uppercase, lowercase, number, and symbol sets
 - Ambiguous-character exclusion and custom exclusions
-- Memorable passphrases with configurable separators
+- Memorable passphrases from EFF's 7,776-word list with configurable separators
 - Interactive prompts and a quick-generation mode
 - Strength analysis and weak-pattern warnings
 - Optional clipboard copy
@@ -39,7 +39,8 @@ The displayed entropy is a pool-size estimate for the selected generator setting
 
 ### Security defaults
 
-- Passwords are generated with Python's cryptographically secure `secrets` module.
+- Random choices use Python's `secrets` module.
+- Passphrases default to six independently selected EFF words (about 77.5 bits).
 - The web interface returns generated values only to the current page and does not write them to history.
 - CLI history is written only when `--save-history` is supplied.
 - History and exports receive owner-only permissions on POSIX systems.
@@ -80,8 +81,8 @@ uv run python main.py
 # 20-character password using every character class
 uv run python main.py --length 20 --upper --lower --digits --symbols
 
-# Four-word capitalized passphrase
-uv run python main.py --passphrase --words 4 --capitalize
+# Six-word capitalized passphrase
+uv run python main.py --passphrase --words 6 --capitalize
 
 # Generate and copy one strong 20-character password
 uv run python main.py --quick
@@ -105,7 +106,7 @@ uv run python main.py --length 20 --upper --lower --digits --symbols --save-hist
 | `--copy` | Copy the generated value | Off |
 | `--interactive` | Force interactive mode | Off |
 | `--passphrase` | Generate a passphrase | Off |
-| `--words N` | Number of passphrase words | `4` |
+| `--words N` | Number of passphrase words | `6` |
 | `--separator SEP` | Separator between words | `-` |
 | `--capitalize` | Capitalize passphrase words | Off |
 | `--add-number` | Append a number to the passphrase | Off |
@@ -143,7 +144,7 @@ uv sync --all-extras
 uv run pytest tests/ -v
 
 # Compile-check the Python entry points
-uv run python -m py_compile main.py web.py
+uv run python -m py_compile main.py web.py passphrases.py
 ```
 
 For pull requests targeting `main`, GitHub Actions runs the test suite and a non-blocking Python compilation check.
@@ -155,11 +156,16 @@ password-generator/
 ├── .github/workflows/ci.yml
 ├── docs/web-ui.png
 ├── main.py
+├── passphrases.py
 ├── web.py
 ├── templates/index.html
 ├── tests/
 │   ├── test_main.py
+│   ├── test_passphrases.py
 │   └── test_web.py
+├── wordlists/
+│   ├── eff_large_wordlist.txt
+│   └── README.md
 ├── pyproject.toml
 └── README.md
 ```

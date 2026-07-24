@@ -1,6 +1,9 @@
+import math
+
 import pytest
 from fastapi.testclient import TestClient
 
+import web as web_module
 from web import app
 
 
@@ -26,7 +29,7 @@ def test_home_matches_backend_limits_and_has_inline_error_handling():
 
     assert 'name="count" value="1" min="1" max="20"' in html
     assert 'name="length" min="6" max="64" value="20"' in html
-    assert 'name="word_count" value="4" min="2" max="10"' in html
+    assert 'name="word_count" value="6" min="2" max="10"' in html
     assert "if (!response.ok)" in html
     assert "data.detail" in html
     assert "alert('Error')" not in html
@@ -120,3 +123,46 @@ def test_generate_rejects_unsupported_separator():
 
     assert response.status_code == 422
     assert response.json()["detail"] == "separator is not supported"
+
+
+def test_generate_passphrase_defaults_to_six_words_and_reports_choice_entropy():
+    response = client.post(
+        "/generate",
+        data={
+            "mode": "passphrase",
+            "count": "1",
+            "separator": "-",
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["passwords"][0]
+    assert len(result["password"].split("-")) == 6
+    assert result["entropy"] == f"{6 * math.log2(7776):.1f}"
+    assert result["strength"] == "Strong"
+
+
+def test_generate_passphrase_counts_random_number_entropy():
+    response = client.post(
+        "/generate",
+        data={
+            "mode": "passphrase",
+            "count": "1",
+            "word_count": "6",
+            "separator": "-",
+            "add_number": "on",
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["passwords"][0]
+    expected = (6 * math.log2(7776)) + math.log2(100)
+    assert result["entropy"] == f"{expected:.1f}"
+
+
+def test_web_passphrase_uses_fixed_width_number_suffix(monkeypatch):
+    monkeypatch.setattr(web_module.secrets, "randbelow", lambda _: 7)
+
+    password, _ = web_module.generate_passphrase(6, "-", False, True)
+
+    assert password.endswith("07")

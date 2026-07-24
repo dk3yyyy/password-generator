@@ -67,6 +67,12 @@ class TestPasswordGeneration:
 
 
 class TestPassphraseGeneration:
+    def test_default_passphrase_uses_eff_wordlist(self):
+        pwd, pool = generate_passphrase(6, "-", False, False)
+
+        assert pool == 7776
+        assert all(word in PASSPHRASE_WORDLIST for word in pwd.split("-"))
+
     def test_generate_passphrase_default(self):
         pwd, pool = generate_passphrase(4, "-", True, False)
         assert len(pwd.split("-")) == 4
@@ -76,6 +82,13 @@ class TestPassphraseGeneration:
         pwd, pool = generate_passphrase(4, "-", True, True)
         assert pwd[-1].isdigit()
 
+    def test_generate_passphrase_uses_fixed_width_number_suffix(self, monkeypatch):
+        monkeypatch.setattr(main_module.secrets, "randbelow", lambda _: 7)
+
+        pwd, _ = generate_passphrase(4, "-", False, True)
+
+        assert pwd.endswith("07")
+
     def test_generate_passphrase_different_separator(self):
         pwd, pool = generate_passphrase(3, "_", False, False)
         assert "_" in pwd or len(pwd.split("_")) == 3
@@ -83,6 +96,40 @@ class TestPassphraseGeneration:
     def test_generate_passphrase_single_word(self):
         pwd, pool = generate_passphrase(1, "-", False, False)
         assert len(pwd.split("-")) == 1
+
+    @pytest.mark.parametrize(
+        ("extra_args", "expected_number_choices"),
+        [([], 1), (["--add-number"], 100)],
+    )
+    def test_cli_passphrase_uses_secure_defaults_and_word_entropy(
+        self, monkeypatch, tmp_path, extra_args, expected_number_choices
+    ):
+        config_dir = tmp_path / ".passgen"
+        monkeypatch.setattr(main_module, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(main_module, "HISTORY_FILE", config_dir / "history.json")
+        monkeypatch.setattr(main_module, "CONFIG_FILE", config_dir / "config.json")
+        monkeypatch.setattr(main_module, "WORDLIST_DIR", config_dir / "wordlists")
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--passphrase", *extra_args])
+
+        observed = {}
+
+        def fake_generate(word_count, separator, capitalize, include_number):
+            observed["word_count"] = word_count
+            observed["include_number"] = include_number
+            return "alpha-beta-gamma-delta-epsilon-zeta", 7776
+
+        def fake_entropy(word_count, pool_size, number_choices=1):
+            observed["entropy_args"] = (word_count, pool_size, number_choices)
+            return 80.0
+
+        monkeypatch.setattr(main_module, "generate_passphrase", fake_generate)
+        monkeypatch.setattr(main_module, "calculate_passphrase_entropy", fake_entropy)
+
+        main_module.main()
+
+        assert observed["word_count"] == 6
+        assert observed["entropy_args"] == (6, 7776, expected_number_choices)
 
 
 class TestEntropyCalculation:
