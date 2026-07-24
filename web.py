@@ -3,7 +3,7 @@ import string
 import random
 import math
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 app = FastAPI(title="Password Generator")
@@ -113,6 +113,19 @@ def generate_passphrase(
     return passphrase, len(DEFAULT_WORDLIST)
 
 
+def parse_bounded_integer(value, field: str, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=f"{field} must be an integer") from error
+    if not minimum <= parsed <= maximum:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{field} must be between {minimum} and {maximum}",
+        )
+    return parsed
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home():
     return TEMPLATE_PATH.read_text()
@@ -122,14 +135,25 @@ async def home():
 async def generate(request: Request):
     form = await request.form()
     mode = form.get("mode", "random")
-    count = int(form.get("count", 1))
-    count = min(count, 20)
+    if mode not in {"random", "passphrase"}:
+        raise HTTPException(
+            status_code=422,
+            detail="mode must be 'random' or 'passphrase'",
+        )
+    count = parse_bounded_integer(form.get("count", 1), "count", 1, 20)
 
     passwords = []
 
     if mode == "passphrase":
-        word_count = int(form.get("word_count", 4))
+        word_count = parse_bounded_integer(
+            form.get("word_count", 4),
+            "word_count",
+            2,
+            10,
+        )
         separator = form.get("separator", "-")
+        if separator not in {"-", "_", ".", " "}:
+            raise HTTPException(status_code=422, detail="separator is not supported")
         capitalize = "capitalize" in form
         include_number = "add_number" in form
 
@@ -145,12 +169,17 @@ async def generate(request: Request):
                 "entropy": f"{entropy:.1f}",
             })
     else:
-        length = int(form.get("length", 12))
+        length = parse_bounded_integer(form.get("length", 12), "length", 6, 64)
         use_upper = "upper" in form
         use_lower = "lower" in form
         use_digits = "digits" in form
         use_symbols = "symbols" in form
         no_ambiguous = "no_ambiguous" in form
+        if not any((use_upper, use_lower, use_digits, use_symbols)):
+            raise HTTPException(
+                status_code=422,
+                detail="select at least one character type",
+            )
 
         for _ in range(count):
             pwd, pool_size = generate_password(
