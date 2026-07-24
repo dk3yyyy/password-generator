@@ -667,12 +667,9 @@ def _run_once() -> bool:
         if args.copy:
             copy_flag = True
         if not save_history:
-            save_history = (
-                console.input(
-                    "[info]Save to local plaintext history? [y/N]: [/info]"
-                ).lower()
-                == "y"
-            )
+            save_history = console.input(
+                "[info]Save to local plaintext history? [y/N]: [/info]"
+            ).strip().lower() in {"y", "yes"}
     else:
         passphrase_mode = args.passphrase
         length = args.length
