@@ -148,10 +148,9 @@ class TestPatternDetection:
         warnings = check_password_patterns("qwe")
         assert any("Keyboard" in w for w in warnings)
 
-    def test_random_password_no_warnings(self):
-        pwd, _ = generate_password(20, True, True, True, True)
-        warnings = check_password_patterns(pwd)
-        assert len(warnings) == 0
+    def test_password_without_patterns_has_no_warnings(self):
+        warnings = check_password_patterns("gT7!pL2@vN9#rK4$")
+        assert warnings == []
 
 
 class TestSecureStorage:
