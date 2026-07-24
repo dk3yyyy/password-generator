@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import web as web_module
+from passwords import calculate_password_entropy
 from web import app
 
 
@@ -108,6 +109,27 @@ def test_generate_requires_a_character_set():
 
     assert response.status_code == 422
     assert response.json()["detail"] == "select at least one character type"
+
+
+def test_generate_random_reports_exact_constrained_entropy():
+    response = client.post(
+        "/generate",
+        data={
+            "mode": "random",
+            "count": "1",
+            "length": "8",
+            "upper": "on",
+            "lower": "on",
+            "digits": "on",
+            "symbols": "on",
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["passwords"][0]
+    expected = calculate_password_entropy(8, True, True, True, True)
+    assert result["entropy"] == f"{expected:.1f}"
+    assert expected < 8 * math.log2(94)
 
 
 def test_generate_rejects_unsupported_separator():
