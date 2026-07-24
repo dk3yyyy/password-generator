@@ -322,6 +322,245 @@ class TestSecureStorage:
 
         assert not main_module.HISTORY_FILE.exists()
 
+    def test_interactive_view_history_displays_saved_entries(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        history = main_module.PasswordHistory()
+        history.history = [
+            {
+                "password": "savedpwd",
+                "type": "Random",
+                "strength": "Strong",
+                "entropy": 80.0,
+                "timestamp": "2026-07-24 12:00:00",
+                "category": "test",
+            }
+        ]
+        monkeypatch.setattr(main_module, "password_history", history)
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["3", "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        assert "savedpwd" in capsys.readouterr().out
+
+    def test_interactive_menu_loops_until_q(self, monkeypatch, tmp_path, capsys):
+        self.configure_paths(monkeypatch, tmp_path)
+        history = main_module.PasswordHistory()
+        history.history = [
+            {
+                "password": "savedpwd",
+                "type": "Random",
+                "strength": "Strong",
+                "entropy": 80.0,
+                "timestamp": "2026-07-24 12:00:00",
+                "category": "test",
+            }
+        ]
+        monkeypatch.setattr(main_module, "password_history", history)
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["3", "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        output = capsys.readouterr().out
+        assert output.count("Interactive Mode") == 2
+        assert "savedpwd" in output
+        assert "Goodbye" in output
+
+    def test_interactive_q_exits_without_generating_or_saving(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: "Q")
+
+        def fail_if_called(_):
+            raise AssertionError("password generation must not run when quitting")
+
+        monkeypatch.setattr(main_module.secrets, "choice", fail_if_called)
+
+        main_module.main()
+
+        assert "Goodbye" in capsys.readouterr().out
+        assert not main_module.HISTORY_FILE.exists()
+
+    def test_interactive_wordlist_create_list_delete_and_return_to_menu(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(
+            [
+                "4", "2", "custom", "alpha, beta, gamma",
+                "4", "1",
+                "4", "3", "custom",
+                "q",
+            ]
+        )
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        output = capsys.readouterr().out
+        assert "Wordlist 'custom' created with 3 words" in output
+        assert "Available wordlists" in output
+        assert "custom" in output
+        assert "Wordlist 'custom' deleted" in output
+        assert output.count("Interactive Mode") == 4
+        assert not (main_module.WORDLIST_DIR / "custom.txt").exists()
+
+    def test_interactive_wordlist_invalid_name_returns_to_menu(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["4", "2", "../outside", "alpha, beta", "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        output = capsys.readouterr().out
+        assert "Invalid wordlist name" in output
+        assert "Goodbye" in output
+        assert not (tmp_path / "outside.txt").exists()
+
+    @pytest.mark.parametrize(
+        ("menu_choice", "expected_format"),
+        [("1", "json"), ("2", "csv")],
+    )
+    def test_interactive_export_choice_selects_format_and_returns_to_menu(
+        self, monkeypatch, tmp_path, capsys, menu_choice, expected_format
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        history = main_module.PasswordHistory()
+        history.history = [
+            {
+                "password": "savedpwd",
+                "type": "Random",
+                "strength": "Strong",
+                "entropy": 80.0,
+                "timestamp": "2026-07-24 12:00:00",
+                "category": "wifi",
+            }
+        ]
+        monkeypatch.setattr(main_module, "password_history", history)
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["5", menu_choice, "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        export_path = main_module.CONFIG_DIR / f"passwords.{expected_format}"
+        output = capsys.readouterr().out
+        assert export_path.exists()
+        assert stat.S_IMODE(export_path.stat().st_mode) == 0o600
+        assert "Exported 1 passwords" in output
+        assert "Goodbye" in output
+
+    def test_interactive_export_by_category_filters_entries(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        history = main_module.PasswordHistory()
+        history.history = [
+            {"password": "wifi-password", "category": "wifi"},
+            {"password": "email-password", "category": "email"},
+        ]
+        monkeypatch.setattr(main_module, "password_history", history)
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["5", "3", "wifi", "json", "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        exported = json.loads((main_module.CONFIG_DIR / "passwords.json").read_text())
+        output = capsys.readouterr().out
+        assert exported == [{"password": "wifi-password", "category": "wifi"}]
+        assert "Exported 1 passwords" in output
+        assert "Goodbye" in output
+
+    def test_interactive_export_with_no_history_returns_to_menu(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(["5", "q"])
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        output = capsys.readouterr().out
+        assert "No passwords to export" in output
+        assert "Goodbye" in output
+
+    def test_interactive_generation_can_opt_in_to_history(
+        self, monkeypatch, tmp_path
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(
+            [
+                "1",
+                "12",
+                "y",
+                "y",
+                "y",
+                "n",
+                "n",
+                "",
+                "1",
+                "wifi",
+                "n",
+                "y",
+                "q",
+            ]
+        )
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        stored = json.loads(main_module.HISTORY_FILE.read_text())
+        assert len(stored) == 1
+        assert stored[0]["category"] == "wifi"
+
+    def test_interactive_generation_does_not_save_when_prompt_is_declined(
+        self, monkeypatch, tmp_path
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
+        monkeypatch.setattr(sys, "argv", ["passgen", "--interactive"])
+        responses = iter(
+            [
+                "1",
+                "12",
+                "y",
+                "y",
+                "y",
+                "n",
+                "n",
+                "",
+                "1",
+                "",
+                "n",
+                "n",
+                "q",
+            ]
+        )
+        monkeypatch.setattr(main_module.console, "input", lambda _: next(responses))
+
+        main_module.main()
+
+        assert not main_module.HISTORY_FILE.exists()
+
     def test_existing_history_permissions_are_tightened(self, monkeypatch, tmp_path):
         config_dir = self.configure_paths(monkeypatch, tmp_path)
         config_dir.mkdir(mode=0o755)
@@ -415,6 +654,20 @@ class TestWordlistPaths:
 
         with pytest.raises(ValueError, match="outside the wordlist directory"):
             main_module.load_custom_wordlist("safe")
+
+    def test_save_wordlist_rejects_symlink_escape_without_overwriting_target(
+        self, monkeypatch, tmp_path
+    ):
+        self.configure_paths(monkeypatch, tmp_path)
+        main_module.WORDLIST_DIR.mkdir(parents=True)
+        outside_path = tmp_path / "outside.txt"
+        outside_path.write_text("do not overwrite")
+        (main_module.WORDLIST_DIR / "safe.txt").symlink_to(outside_path)
+
+        with pytest.raises(ValueError, match="outside the wordlist directory"):
+            main_module.save_wordlist("safe", ["replacement"])
+
+        assert outside_path.read_text() == "do not overwrite"
 
     def test_valid_wordlist_round_trip(self, monkeypatch, tmp_path):
         self.configure_paths(monkeypatch, tmp_path)

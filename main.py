@@ -338,7 +338,11 @@ def get_interactive_options():
     console.print("[info]3. View History[/info]")
     console.print("[info]4. Manage Wordlists[/info]")
     console.print("[info]5. Export Passwords[/info]")
-    choice = console.input("\n[info]Choose option (1/2/3/4/5): [/info]").strip()
+    console.print("[info]q. Quit[/info]")
+    choice = console.input("\n[info]Choose option (1/2/3/4/5/q): [/info]").strip().lower()
+
+    if choice == "q":
+        return "quit", None, None, None, None, None, None, None, None, False, None
 
     if choice == "3":
         return "history", None, None, None, None, None, None, None, None, False, None
@@ -427,8 +431,11 @@ def manage_wordlists_interactive():
         words_input = console.input("[info]Enter words (comma-separated): [/info]").strip()
         words = [w.strip() for w in words_input.split(",") if w.strip()]
         if words:
-            save_wordlist(name, words)
-            console.print(f"[success]Wordlist '{name}' created with {len(words)} words![/success]")
+            try:
+                save_wordlist(name, words)
+                console.print(f"[success]Wordlist '{name}' created with {len(words)} words![/success]")
+            except (ValueError, OSError) as error:
+                console.print(f"[error]{error}[/error]")
         else:
             console.print("[warning]No words provided.[/warning]")
     elif choice == "3":
@@ -438,10 +445,15 @@ def manage_wordlists_interactive():
             return "list", None, None, None, None, None, None, None, None, False, None
         name = console.input("[info]Enter wordlist name to delete: [/info]").strip()
         if name in wordlists:
-            (WORDLIST_DIR / f"{name}.txt").unlink()
-            console.print(f"[success]Wordlist '{name}' deleted![/success]")
+            try:
+                wordlist_path(name).unlink()
+                console.print(f"[success]Wordlist '{name}' deleted![/success]")
+            except (ValueError, OSError) as error:
+                console.print(f"[error]{error}[/error]")
         else:
             console.print("[error]Wordlist not found.[/error]")
+    else:
+        console.print("[warning]Invalid option.[/warning]")
 
     return "list", None, None, None, None, None, None, None, None, False, None
 
@@ -463,10 +475,14 @@ def export_interactive():
     choice = console.input("\n[info]Choose option (1/2/3): [/info]").strip()
 
     export_history = history
-    category = None
-
-    if choice == "3":
-        categories = set(h.get("category", "") for h in history if h.get("category"))
+    if choice == "1":
+        format_choice = "json"
+    elif choice == "2":
+        format_choice = "csv"
+    elif choice == "3":
+        categories = sorted(
+            {h.get("category", "") for h in history if h.get("category")}
+        )
         if not categories:
             console.print("[warning]No categorized passwords to export.[/warning]")
             return "list", None, None, None, None, None, None, None, None, False, None
@@ -475,10 +491,16 @@ def export_interactive():
             console.print(f"  - {c}")
         category = console.input("[info]Enter category: [/info]").strip()
         export_history = [h for h in history if h.get("category") == category]
-
-    format_choice = console.input("[info]Export format (json/csv): [/info]").strip().lower()
-    if format_choice not in ("json", "csv"):
-        format_choice = "json"
+        if not export_history:
+            console.print(f"[warning]No passwords found in category '{category}'.[/warning]")
+            return "list", None, None, None, None, None, None, None, None, False, None
+        format_choice = console.input("[info]Export format (json/csv): [/info]").strip().lower()
+        if format_choice not in ("json", "csv"):
+            console.print("[warning]Invalid format. Using JSON.[/warning]")
+            format_choice = "json"
+    else:
+        console.print("[warning]Invalid option.[/warning]")
+        return "list", None, None, None, None, None, None, None, None, False, None
 
     filename = f"passwords.{format_choice}"
     export_path = CONFIG_DIR / filename
@@ -505,7 +527,7 @@ def copy_to_clipboard(text: str):
                 return False
 
 
-def main():
+def _run_once() -> bool:
     ensure_config_dir()
 
     parser = argparse.ArgumentParser(description="Secure Password Generator")
@@ -583,29 +605,29 @@ def main():
         }
         save_config(config)
         console.print("[success]Config saved successfully![/success]")
-        return
+        return False
 
     if args.history:
         password_history.show(console, args.category if args.category else None)
-        return
+        return False
 
     if args.clear_history:
         password_history.history.clear()
         password_history.save()
         console.print("[success]History cleared![/success]")
-        return
+        return False
 
     if args.export:
         if not password_history.history:
             console.print("[warning]No passwords to export.[/warning]")
-            return
+            return False
         export_history = password_history.history
         if args.category:
             export_history = [h for h in export_history if h.get("category") == args.category]
         export_path = CONFIG_DIR / f"exported_passwords.{args.export}"
         export_passwords(export_history, args.export, str(export_path))
         console.print(f"[success]Exported {len(export_history)} passwords to {export_path}![/success]")
-        return
+        return False
 
     if args.wordlist:
         global PASSPHRASE_WORDLIST
@@ -613,17 +635,24 @@ def main():
             PASSPHRASE_WORDLIST = load_custom_wordlist(args.wordlist)
         except ValueError as e:
             console.print(f"[error]{e}[/error]")
-            return
+            return False
 
     is_interactive = args.interactive or len(sys.argv) == 1
     result = None
     word_count = 0
     include_number = False
+    save_history = args.save_history
 
     if is_interactive:
         result = get_interactive_options()
-        if result[0] in ("history", "list", "export"):
-            return
+        if result[0] == "quit":
+            console.print("[success]Goodbye![/success]")
+            return False
+        if result[0] == "history":
+            password_history.show(console)
+            return True
+        if result[0] in ("list", "export"):
+            return True
         elif result[0] == "passphrase":
             p_type, word_count, separator, capitalize, _, _, _, count, _, copy_flag, category = result
             passphrase_mode = True
@@ -637,6 +666,13 @@ def main():
 
         if args.copy:
             copy_flag = True
+        if not save_history:
+            save_history = (
+                console.input(
+                    "[info]Save to local plaintext history? [y/N]: [/info]"
+                ).lower()
+                == "y"
+            )
     else:
         passphrase_mode = args.passphrase
         length = args.length
@@ -760,7 +796,7 @@ def main():
                 strength,
                 entropy,
                 category or "",
-                persist=args.save_history,
+                persist=save_history,
             )
             table.add_row(
                 str(i),
@@ -777,9 +813,17 @@ def main():
             else:
                 console.print("\n[error]✗ Failed to copy to clipboard.[/error]")
 
+        return is_interactive
+
     except ValueError as e:
         console.print(f"[error]Error: {e}[/error]")
         exit(1)
-    
+
+
+def main():
+    while _run_once():
+        pass
+
+
 if __name__ == "__main__":
     main()
