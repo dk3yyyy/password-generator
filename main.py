@@ -123,11 +123,29 @@ def save_config(config: dict):
         json.dump(config, f, indent=2)
 
 
+def wordlist_path(name: str) -> Path:
+    valid_characters = string.ascii_letters + string.digits + "_-"
+    if (
+        not isinstance(name, str)
+        or not 1 <= len(name) <= 64
+        or any(character not in valid_characters for character in name)
+    ):
+        raise ValueError(
+            "Invalid wordlist name: use 1-64 ASCII letters, numbers, hyphens, or underscores"
+        )
+    if WORDLIST_DIR.is_symlink():
+        raise ValueError("Wordlist directory must not be a symlink")
+    path = WORDLIST_DIR / f"{name}.txt"
+    if path.resolve(strict=False).parent != WORDLIST_DIR.resolve():
+        raise ValueError("Wordlist path resolves outside the wordlist directory")
+    return path
+
+
 def load_custom_wordlist(name: str) -> list[str]:
-    wordlist_path = WORDLIST_DIR / f"{name}.txt"
-    if not wordlist_path.exists():
+    path = wordlist_path(name)
+    if not path.exists():
         raise ValueError(f"Wordlist '{name}' not found")
-    with open(wordlist_path) as f:
+    with open(path) as f:
         words = [w.strip().lower() for w in f if w.strip()]
     if not words:
         raise ValueError(f"Wordlist '{name}' is empty")
@@ -135,9 +153,9 @@ def load_custom_wordlist(name: str) -> list[str]:
 
 
 def save_wordlist(name: str, words: list[str]):
+    path = wordlist_path(name)
     ensure_config_dir()
-    wordlist_path = WORDLIST_DIR / f"{name}.txt"
-    with open(wordlist_path, "w") as f:
+    with open(path, "w") as f:
         f.write("\n".join(words))
 
 
