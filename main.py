@@ -7,6 +7,7 @@ import sys
 import math
 import os
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from rich.console import Console
 from rich.theme import Theme
@@ -103,8 +104,29 @@ def check_password_patterns(password: str) -> list[str]:
 
 
 def ensure_config_dir():
-    CONFIG_DIR.mkdir(exist_ok=True)
-    WORDLIST_DIR.mkdir(exist_ok=True)
+    CONFIG_DIR.mkdir(mode=0o700, exist_ok=True)
+    WORDLIST_DIR.mkdir(mode=0o700, exist_ok=True)
+    CONFIG_DIR.chmod(0o700)
+    WORDLIST_DIR.chmod(0o700)
+
+
+@contextmanager
+def open_private_text(path: Path, *, newline=None):
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", newline=newline) as file:
+            descriptor = None
+            yield file
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def write_private_json(path: Path, data) -> None:
+    ensure_config_dir()
+    with open_private_text(path) as file:
+        json.dump(data, file, indent=2)
 
 
 def load_config() -> dict:
@@ -172,11 +194,11 @@ def check_common_password(password: str) -> bool:
 def export_passwords(passwords: list[dict], format: str, filepath: str):
     ensure_config_dir()
     if format == "json":
-        with open(filepath, "w") as f:
-            json.dump(passwords, f, indent=2)
+        write_private_json(Path(filepath), passwords)
     elif format == "csv":
         import csv
-        with open(filepath, "w", newline="") as f:
+        path = Path(filepath)
+        with open_private_text(path, newline="") as f:
             if passwords:
                 writer = csv.DictWriter(f, fieldnames=passwords[0].keys())
                 writer.writeheader()
@@ -295,19 +317,32 @@ class PasswordHistory:
     def load(self):
         if not HISTORY_FILE.exists():
             return
+        ensure_config_dir()
+        HISTORY_FILE.chmod(0o600)
         try:
             with open(HISTORY_FILE) as f:
                 loaded = json.load(f)
-                self.history = loaded[:self.max_size]
+                if isinstance(loaded, list):
+                    self.history = [
+                        entry for entry in loaded if isinstance(entry, dict)
+                    ][:self.max_size]
         except (json.JSONDecodeError, IOError):
             self.history = []
 
     def save(self):
-        ensure_config_dir()
-        with open(HISTORY_FILE, "w") as f:
-            json.dump(self.history, f, indent=2)
+        write_private_json(HISTORY_FILE, self.history)
 
-    def add(self, password: str, password_type: str, strength: str, entropy: float, category: str = ""):
+    def add(
+        self,
+        password: str,
+        password_type: str,
+        strength: str,
+        entropy: float,
+        category: str = "",
+        persist: bool = False,
+    ):
+        if not persist:
+            return
         entry = {
             "password": password,
             "type": password_type,
@@ -560,7 +595,12 @@ def main():
     parser.add_argument("--separator", type=str, default="-", help="Separator for passphrase words")
     parser.add_argument("--capitalize", action="store_true", help="Capitalize passphrase words")
     parser.add_argument("--add-number", action="store_true", help="Add number at end of passphrase")
-    parser.add_argument("--history", action="store_true", help="Show password history")
+    parser.add_argument("--history", action="store_true", help="Show saved password history")
+    parser.add_argument(
+        "--save-history",
+        action="store_true",
+        help="Explicitly save generated passwords to local history",
+    )
     parser.add_argument("--clear-history", action="store_true", help="Clear all password history")
     parser.add_argument("--category", type=str, default="", help="Category for password (wifi/email/social/other)")
     parser.add_argument("--wordlist", type=str, default="", help="Custom wordlist name for passphrase")
@@ -763,7 +803,14 @@ def main():
             for w in pattern_warnings:
                 console.print(f"[warning]⚠ {w} in generated password.[/warning]")
 
-            password_history.add(pwd, p_type, strength, entropy, category)
+            password_history.add(
+                pwd,
+                p_type,
+                strength,
+                entropy,
+                category or "",
+                persist=args.save_history,
+            )
             table.add_row(
                 str(i),
                 pwd,
