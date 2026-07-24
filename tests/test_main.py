@@ -148,10 +148,9 @@ class TestPatternDetection:
         warnings = check_password_patterns("qwe")
         assert any("Keyboard" in w for w in warnings)
 
-    def test_random_password_no_warnings(self):
-        pwd, _ = generate_password(20, True, True, True, True)
-        warnings = check_password_patterns(pwd)
-        assert len(warnings) == 0
+    def test_password_without_patterns_has_no_warnings(self):
+        warnings = check_password_patterns("gT7!pL2@vN9#rK4$")
+        assert warnings == []
 
 
 class TestSecureStorage:
@@ -278,6 +277,68 @@ class TestSecureStorage:
             main_module.write_private_json(tmp_path / "private.json", {"ok": True})
 
         assert len(closed_descriptors) == 1
+
+
+class TestWordlistPaths:
+    @staticmethod
+    def configure_paths(monkeypatch, tmp_path):
+        config_dir = tmp_path / ".passgen"
+        monkeypatch.setattr(main_module, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(main_module, "WORDLIST_DIR", config_dir / "wordlists")
+
+    def test_save_wordlist_rejects_path_traversal(self, monkeypatch, tmp_path):
+        self.configure_paths(monkeypatch, tmp_path)
+        outside_path = tmp_path / "outside.txt"
+
+        with pytest.raises(ValueError, match="Invalid wordlist name"):
+            main_module.save_wordlist("../outside", ["secret"])
+
+        assert not outside_path.exists()
+
+    def test_load_wordlist_rejects_symlink_escape(self, monkeypatch, tmp_path):
+        self.configure_paths(monkeypatch, tmp_path)
+        main_module.WORDLIST_DIR.mkdir(parents=True)
+        outside_path = tmp_path / "outside.txt"
+        outside_path.write_text("secret\n")
+        (main_module.WORDLIST_DIR / "safe.txt").symlink_to(outside_path)
+
+        with pytest.raises(ValueError, match="outside the wordlist directory"):
+            main_module.load_custom_wordlist("safe")
+
+    def test_valid_wordlist_round_trip(self, monkeypatch, tmp_path):
+        self.configure_paths(monkeypatch, tmp_path)
+
+        main_module.save_wordlist("dice-words_2026", ["Alpha", "Beta"])
+
+        assert main_module.load_custom_wordlist("dice-words_2026") == ["alpha", "beta"]
+
+    @pytest.mark.parametrize("name", ["a", "_words", "-words", "a" * 64])
+    def test_valid_name_boundaries(self, monkeypatch, tmp_path, name):
+        self.configure_paths(monkeypatch, tmp_path)
+
+        main_module.save_wordlist(name, ["Alpha"])
+
+        assert main_module.load_custom_wordlist(name) == ["alpha"]
+
+    @pytest.mark.parametrize("name", ["", "a" * 65, "two words", "café", "a.b", "a/b"])
+    def test_invalid_names_are_rejected(self, monkeypatch, tmp_path, name):
+        self.configure_paths(monkeypatch, tmp_path)
+
+        with pytest.raises(ValueError, match="Invalid wordlist name"):
+            main_module.save_wordlist(name, ["Alpha"])
+
+    def test_symlinked_wordlist_directory_is_rejected(self, monkeypatch, tmp_path):
+        self.configure_paths(monkeypatch, tmp_path)
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        main_module.CONFIG_DIR.mkdir()
+        main_module.WORDLIST_DIR.symlink_to(outside_dir, target_is_directory=True)
+
+        with pytest.raises(ValueError, match="must not be a symlink"):
+            main_module.save_wordlist("safe", ["secret"])
+
+        assert not (outside_dir / "safe.txt").exists()
+
 
 
 class TestConfigManagement:
