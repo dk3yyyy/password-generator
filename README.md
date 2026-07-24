@@ -6,7 +6,7 @@
 [![Tested with Python 3.14](https://img.shields.io/badge/Tested%20with-Python%203.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32.svg)](LICENSE)
 
-PassGen uses Python's `secrets` module for cryptographically secure randomness. The web interface does not persist generated values, while CLI history is disabled unless you explicitly enable it for a generation command.
+PassGen uses Python's `secrets` module for cryptographically secure randomness. The web interface does not persist generated values, while CLI history is disabled unless you explicitly enable it with `--save-history` or confirm the interactive prompt.
 
 ## 🖥️ Web interface
 
@@ -42,7 +42,7 @@ For random passwords, displayed entropy is `log₂` of the exact number of valid
 - Random choices use Python's `secrets` module.
 - Passphrases default to six independently selected EFF words (about 77.5 bits).
 - The web interface returns generated values only to the current page and does not write them to history.
-- CLI history is written only when `--save-history` is supplied.
+- CLI history is written only when `--save-history` is supplied or the interactive save prompt is confirmed.
 - History and exports receive owner-only permissions on POSIX systems.
 - Custom wordlists are constrained to PassGen's local wordlist directory.
 
@@ -90,6 +90,8 @@ uv run python main.py --quick
 # Explicitly save this result to local history
 uv run python main.py --length 20 --upper --lower --digits --symbols --save-history
 ```
+
+Interactive mode returns to the main menu after each action. Enter `q` from the menu to quit.
 
 ## 🧰 CLI reference
 
