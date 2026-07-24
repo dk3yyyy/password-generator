@@ -6,23 +6,15 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from passphrases import BUILTIN_WORDLIST, calculate_passphrase_entropy
+
 app = FastAPI(title="Password Generator")
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
 
 AMBIGUOUS_CHARS = set("0O1lI")
 
-DEFAULT_WORDLIST = [
-    "apple", "banana", "cherry", "dragon", "eagle", "forest", "garden", "harbor",
-    "island", "jungle", "knight", "lemon", "mountain", "night", "ocean", "planet",
-    "quiet", "river", "sunset", "thunder", "umbrella", "volcano", "winter", "yellow",
-    "zebra", "anchor", "breeze", "castle", "diamond", "ember", "falcon", "glacier",
-    "harmony", "ivory", "jasmine", "kingdom", "lantern", "marble", "nebula", "orchid",
-    "phoenix", "quartz", "rainbow", "silver", "tiger", "unicorn", "velvet", "willow",
-    "xenon", "yacht", "azure", "bronze", "copper", "dawn", "echo", "frost",
-    "golden", "horizon", "iris", "jade", "karma", "lotus", "mystic", "nectar",
-    "opal", "pearl", "quest", "ruby", "storm", "topaz", "ultra", "vivid",
-]
+DEFAULT_WORDLIST = BUILTIN_WORDLIST
 
 
 def calculate_entropy(password: str, pool_size: int) -> float:
@@ -109,7 +101,7 @@ def generate_passphrase(
         words = [w.capitalize() for w in words]
     passphrase = separator.join(words)
     if include_number:
-        passphrase += str(secrets.randbelow(100))
+        passphrase += f"{secrets.randbelow(100):02d}"
     return passphrase, len(DEFAULT_WORDLIST)
 
 
@@ -146,7 +138,7 @@ async def generate(request: Request):
 
     if mode == "passphrase":
         word_count = parse_bounded_integer(
-            form.get("word_count", 4),
+            form.get("word_count", 6),
             "word_count",
             2,
             10,
@@ -159,7 +151,11 @@ async def generate(request: Request):
 
         for _ in range(count):
             pwd, pool_size = generate_passphrase(word_count, separator, capitalize, include_number)
-            entropy = calculate_entropy(pwd, pool_size)
+            entropy = calculate_passphrase_entropy(
+                word_count,
+                pool_size,
+                number_choices=100 if include_number else 1,
+            )
             strength, color, badge = get_strength(entropy)
             passwords.append({
                 "password": pwd,

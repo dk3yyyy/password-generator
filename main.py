@@ -17,6 +17,8 @@ from rich.table import Table
 from rich import box
 from datetime import datetime
 
+from passphrases import BUILTIN_WORDLIST, calculate_passphrase_entropy
+
 CONFIG_DIR = Path.home() / ".passgen"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -41,22 +43,7 @@ custom_theme = Theme({
 console = Console(theme=custom_theme)
 AMBIGUOUS_CHARS = set("0O1lI")
 
-DEFAULT_WORDLIST = [
-    "apple", "banana", "cherry", "dragon", "eagle", "forest", "garden", "harbor",
-    "island", "jungle", "knight", "lemon", "mountain", "night", "ocean", "planet",
-    "quiet", "river", "sunset", "thunder", "umbrella", "volcano", "winter", "yellow",
-    "zebra", "anchor", "breeze", "castle", "diamond", "ember", "falcon", "glacier",
-    "harmony", "ivory", "jasmine", "kingdom", "lantern", "marble", "nebula", "orchid",
-    "phoenix", "quartz", "rainbow", "silver", "tiger", "unicorn", "velvet", "willow",
-    "xenon", "yacht", "azure", "bronze", "copper", "dawn", "echo", "frost",
-    "golden", "horizon", "iris", "jade", "karma", "lotus", "mystic", "nectar",
-    "opal", "pearl", "quest", "ruby", "storm", "topaz", "ultra", "vivid",
-    "whisper", "xray", "zenith", "amber", "blaze", "cloud", "dream", "energy",
-    "flare", "glow", "halo", "ink", "joy", "kindle", "light", "mist",
-    "nova", "orbit", "prism", "ray", "spark", "trail", "unity", "vapor",
-    "wave", "xerox", "yonder", "zest"
-]
-
+DEFAULT_WORDLIST = BUILTIN_WORDLIST
 PASSPHRASE_WORDLIST = DEFAULT_WORDLIST
 
 VERSION = "1.0.0"
@@ -301,7 +288,7 @@ def generate_passphrase(
     passphrase = separator.join(words)
 
     if include_number:
-        number = str(secrets.randbelow(100))
+        number = f"{secrets.randbelow(100):02d}"
         passphrase += number
 
     pool_size = len(PASSPHRASE_WORDLIST)
@@ -439,7 +426,7 @@ def get_interactive_options():
                 console.print(f"[warning]{e}. Using default wordlist.[/warning]")
 
         try:
-            word_count = int(console.input("\n[info]Number of words (default 4): [/info]") or 4)
+            word_count = int(console.input("\n[info]Number of words (default 6): [/info]") or 6)
             separator = console.input("[info]Separator (default -): [/info]") or "-"
             capitalize = console.input("[info]Capitalize words? [Y/n]: [/info]").lower() in ("", "y")
             include_number = console.input("[info]Add a number at the end? [Y/n]: [/info]").lower() in ("", "y")
@@ -448,7 +435,7 @@ def get_interactive_options():
             copy_to_clipboard = console.input("[info]Copy to clipboard? [y/N]: [/info]").lower() == "y"
         except ValueError:
             console.print("[warning]Invalid input. Using defaults.[/warning]")
-            word_count, separator, capitalize, include_number = 4, "-", True, False
+            word_count, separator, capitalize, include_number = 6, "-", True, False
             count, copy_to_clipboard = 1, False
             category = ""
 
@@ -591,7 +578,7 @@ def main():
     parser.add_argument("--copy", action="store_true", help="Copy password to clipboard")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("--passphrase", action="store_true", help="Generate passphrase instead of random password")
-    parser.add_argument("--words", type=int, default=4, help="Number of words for passphrase")
+    parser.add_argument("--words", type=int, default=6, help="Number of words for passphrase")
     parser.add_argument("--separator", type=str, default="-", help="Separator for passphrase words")
     parser.add_argument("--capitalize", action="store_true", help="Capitalize passphrase words")
     parser.add_argument("--add-number", action="store_true", help="Add number at end of passphrase")
@@ -688,6 +675,8 @@ def main():
 
     is_interactive = args.interactive or len(sys.argv) == 1
     result = None
+    word_count = 0
+    include_number = False
 
     if is_interactive:
         result = get_interactive_options()
@@ -792,7 +781,14 @@ def main():
         table.add_column("Entropy", justify="right")
 
         for i, (pwd, pool_size) in enumerate(passwords, 1):
-            entropy = calculate_entropy(pwd, pool_size)
+            if passphrase_mode:
+                entropy = calculate_passphrase_entropy(
+                    word_count,
+                    pool_size,
+                    number_choices=100 if include_number else 1,
+                )
+            else:
+                entropy = calculate_entropy(pwd, pool_size)
             strength, color = get_strength_label(entropy)
             p_type = "Passphrase" if passphrase_mode else "Random"
 
