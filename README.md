@@ -6,6 +6,8 @@
 [![Tested with Python 3.14](https://img.shields.io/badge/Tested%20with-Python%203.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32.svg)](LICENSE)
 
+**[🚀 Try PassGen in your browser →](https://dk3yyyy.github.io/password-generator/)**
+
 PassGen uses Python's `secrets` module for cryptographically secure randomness. The web interface does not persist generated values, while CLI history is disabled unless you explicitly enable it with `--save-history` or confirm the interactive prompt.
 
 ## 🖥️ Web interfaces
@@ -16,7 +18,7 @@ PassGen uses Python's `secrets` module for cryptographically secure randomness. 
 
 PassGen includes two web implementations:
 
-- **Static browser demo (`docs/`)** — deployable to GitHub Pages with no backend. It uses the Web Crypto API, keeps generated credentials in tab memory only, and loads the bundled EFF wordlist from the same origin.
+- **[Static browser demo](https://dk3yyyy.github.io/password-generator/) (`docs/`)** — live on GitHub Pages with no backend. It uses the Web Crypto API, keeps generated credentials in tab memory only, and loads the bundled EFF wordlist from the same origin.
 - **FastAPI interface (`web.py`)** — demonstrates the Python generator through a local server while preserving the same limits and entropy model.
 
 Both interfaces provide:
