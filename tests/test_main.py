@@ -501,8 +501,9 @@ class TestSecureStorage:
         assert "No passwords to export" in output
         assert "Goodbye" in output
 
+    @pytest.mark.parametrize("save_response", ["Yes", "yes", "y", "Y"])
     def test_interactive_generation_can_opt_in_to_history(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path, save_response
     ):
         self.configure_paths(monkeypatch, tmp_path)
         monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
@@ -520,7 +521,7 @@ class TestSecureStorage:
                 "1",
                 "wifi",
                 "n",
-                "y",
+                save_response,
                 "q",
             ]
         )
@@ -532,8 +533,9 @@ class TestSecureStorage:
         assert len(stored) == 1
         assert stored[0]["category"] == "wifi"
 
+    @pytest.mark.parametrize("save_response", ["No", "no", "N", "n"])
     def test_interactive_generation_does_not_save_when_prompt_is_declined(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path, save_response
     ):
         self.configure_paths(monkeypatch, tmp_path)
         monkeypatch.setattr(main_module, "password_history", main_module.PasswordHistory())
@@ -551,7 +553,7 @@ class TestSecureStorage:
                 "1",
                 "",
                 "n",
-                "n",
+                save_response,
                 "q",
             ]
         )

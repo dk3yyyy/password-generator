@@ -42,7 +42,7 @@ For random passwords, displayed entropy is `log₂` of the exact number of valid
 - Random choices use Python's `secrets` module.
 - Passphrases default to six independently selected EFF words (about 77.5 bits).
 - The web interface returns generated values only to the current page and does not write them to history.
-- CLI history is written only when `--save-history` is supplied or the interactive save prompt is confirmed.
+- CLI history is written only when `--save-history` is supplied or the interactive save prompt is confirmed with `Yes`, `yes`, `y`, or `Y`; `No`, `no`, `N`, `n`, and an empty response decline.
 - History and exports receive owner-only permissions on POSIX systems.
 - Custom wordlists are constrained to PassGen's local wordlist directory.
 
