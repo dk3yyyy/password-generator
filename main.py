@@ -624,6 +624,9 @@ def _run_once() -> bool:
         export_history = password_history.history
         if args.category:
             export_history = [h for h in export_history if h.get("category") == args.category]
+        if not export_history:
+            console.print(f"[warning]No passwords in category '{args.category}'.[/warning]")
+            return False
         export_path = CONFIG_DIR / f"exported_passwords.{args.export}"
         export_passwords(export_history, args.export, str(export_path))
         console.print(f"[success]Exported {len(export_history)} passwords to {export_path}![/success]")

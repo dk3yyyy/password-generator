@@ -731,5 +731,47 @@ class TestWordlist:
         assert all(w.islower() for w in DEFAULT_WORDLIST)
 
 
+class TestCategoryExport:
+    def test_export_with_unmatched_category_exports_nothing(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        config_dir = tmp_path / ".passgen"
+        monkeypatch.setattr(main_module, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(main_module, "HISTORY_FILE", config_dir / "history.json")
+        monkeypatch.setattr(main_module, "CONFIG_FILE", config_dir / "config.json")
+        monkeypatch.setattr(main_module, "WORDLIST_DIR", config_dir / "wordlists")
+        history = main_module.PasswordHistory()
+        history.history = [
+            {
+                "password": "savedpwd",
+                "type": "Random",
+                "strength": "Strong",
+                "entropy": 80.0,
+                "timestamp": "2026-07-24 12:00:00",
+                "category": "wifi",
+            }
+        ]
+        monkeypatch.setattr(main_module, "password_history", history)
+        calls = []
+        monkeypatch.setattr(
+            main_module,
+            "export_passwords",
+            lambda passwords, fmt, path: calls.append((passwords, fmt, path)),
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["passgen", "--export", "json", "--category", "email"],
+        )
+
+        main_module.main()
+
+        assert calls == []
+        assert not (config_dir / "exported_passwords.json").exists()
+        output = capsys.readouterr().out
+        assert "email" in output
+        assert "Exported 0 passwords" not in output
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
